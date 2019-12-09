@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <declare-styleable name="HyperTrackTheme">
+        <attr name="hyperTrackMapStyle" format="reference" />
+    </declare-styleable>
+
+    <declare-styleable name="HyperTrackMap">
+        <attr name="myLocationIcon" format="reference" />
+        <attr name="myLocationBearingIcon" format="reference" />
+        <attr name="myLocationAccuracyColor" format="color" />
+        <attr name="myLocationAccuracyStrokeColor" format="color" />
+        <attr name="tripOriginIcon" format="reference" />
+        <attr name="tripDestinationIcon" format="reference" />
+        <attr name="tripRouteColor" format="color" />
+        <attr name="tripCompletedOriginIcon" format="reference" />
+        <attr name="tripCompletedDestinationIcon" format="reference" />
+        <attr name="tripCompletedRouteColor" format="color" />
+    </declare-styleable>
+</resources>

@@ -1,0 +1,137 @@
+apply plugin: 'com.android.library'
+apply plugin: 'maven'
+
+
+ext {
+    extVersionNumber = computeVersionNumber()
+    extVersionName = (isSnapshot.toBoolean() ? version + "-SNAPSHOT" : version)
+    println "Core SDK version is " + extVersionName
+
+    if (rootProject.hasProperty('library_play_service_version')) {
+        library_play_service_version = rootProject.library_play_service_version
+    } else {
+        library_play_service_version = '17.0.0'
+    }
+
+    if (rootProject.hasProperty('library_compile_sdk_version')) {
+        library_compile_sdk_version = rootProject.library_compile_sdk_version
+    } else {
+        library_compile_sdk_version = 29
+    }
+
+    if (rootProject.hasProperty('library_target_sdk_version')) {
+        library_target_sdk_version = rootProject.library_target_sdk_version
+    } else {
+        library_target_sdk_version = 29
+    }
+
+}
+
+android {
+    compileSdkVersion library_compile_sdk_version
+    buildToolsVersion "29.0.2"
+    defaultConfig {
+        minSdkVersion 19
+        targetSdkVersion library_target_sdk_version
+        versionCode extVersionNumber
+        versionName extVersionName
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+    }
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+        }
+    }
+}
+
+repositories {
+    mavenLocal()
+    maven {
+        name 'hypertrack'
+        url 'http://m2.hypertrack.com'
+    }
+}
+
+dependencies {
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
+    implementation 'androidx.appcompat:appcompat:1.1.0'
+    implementation "com.google.android.gms:play-services-maps:$library_play_service_version"
+
+    implementation 'com.hypertrack:hypertrack-views:0.6.0-SNAPSHOT'
+
+    testImplementation 'junit:junit:4.12'
+    androidTestImplementation 'androidx.test:runner:1.2.0'
+    androidTestImplementation 'androidx.test.espresso:espresso-core:3.2.0'
+}
+
+def computeVersionNumber() {
+
+    def versionString =  project.properties['version']
+    def match = (versionString =~ /(\d+)\.(\d+)\.(\d+)/)
+    if (match) {
+        def versionMajor = match.group(1).toInteger()
+        def versionMinor = match.group(2).toInteger()
+        def versionPatch = match.group(3).toInteger()
+        return versionMajor * 1000000 + versionMinor * 1000 + versionPatch
+    }
+    throw new Exception("Could not read version.properties!")
+}
+
+def homePath = System.properties['user.home']
+
+
+uploadArchives {
+    repositories {
+        mavenDeployer {
+            pom.groupId = 'com.hypertrack'
+            pom.artifactId = 'maps-google'
+            repository(url: "file://" + homePath + "/.m2/repository")
+            pom.version = (project.isSnapshot.toBoolean() ? project.version + "-SNAPSHOT" : project.version)
+        }
+    }
+}
+
+task androidJavadocs(type: Javadoc) {
+    failOnError = false
+    source = android.sourceSets.main.java.srcDirs
+    include 'com/hypertrack/maps/google/*'
+    exclude 'com/hypertrack/maps/google/TripFilters.java'
+    configurations.implementation.setCanBeResolved(true)
+    classpath += project.files(android.getBootClasspath().join(File.pathSeparator))+ configurations.implementation
+
+}
+
+task androidJavadocsJar(type: Jar, dependsOn: androidJavadocs) {
+    classifier = 'javadoc'
+    from androidJavadocs.destinationDir
+}
+
+task androidSourcesJar(type: Jar) {
+    classifier = 'sources'
+    from android.sourceSets.main.java.srcDirs
+}
+
+task copyToS3(type: Exec) {
+    commandLine 'aws', 's3', 'cp', '--recursive',
+            homePath + '/.m2/repository/com/hypertrack/hypertrack/' + (isSnapshot.toBoolean() ? version + "-SNAPSHOT" : version) + '/',
+            's3://m2.hypertrack.com/com/hypertrack/hypertrack/' + (isSnapshot.toBoolean() ? version + "-SNAPSHOT" : version) + '/'
+}
+
+
+task publishJavadoc(type: Exec, dependsOn: androidJavadocs) {
+    commandLine 'aws', 's3', 'cp', '--recursive',
+            projectDir.path + "/build/docs/javadoc/", "s3://hypertrack-javadoc/"
+}
+
+copyToS3.dependsOn uploadArchives
+
+task generateRelease {
+    doLast { println "Release ${extVersionName} started" }
+}
+
+generateRelease.dependsOn(copyToS3)
+
+artifacts {
+    archives androidJavadocsJar
+}
