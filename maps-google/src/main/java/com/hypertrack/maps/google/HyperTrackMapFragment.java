@@ -42,6 +42,7 @@ public class HyperTrackMapFragment extends SupportMapFragment
     private GoogleMapConfig mapConfig;
     protected HyperTrackViews hyperTrackViews;
     protected HyperTrackMap hyperTrackMap;
+    private String subscribedDeviceId;
 
     /**
      * Provide GoogleMapConfig for {@link HyperTrackMap}.
@@ -99,17 +100,33 @@ public class HyperTrackMapFragment extends SupportMapFragment
     }
 
     /**
-     * Subscribes device {@link DeviceUpdatesHandler} and map updates e.g. {@link #onTripUpdateReceived(Trip)}
+     * Subscribes device {@link DeviceUpdatesHandler} and map updates
+     * e.g. {@link #onLocationUpdateReceived(com.hypertrack.sdk.views.dao.Location)}
      *
      * @param deviceId HyperTrack device id (HyperTrack.getInstance(context, "HYPER_TRACK_PUB_KEY").getDeviceID())
      */
     public void subscribeToDevice(String deviceId) {
-        if (hyperTrackViews != null) {
-            hyperTrackViews.subscribeToDeviceUpdates(deviceId, this);
-            if (hyperTrackMap != null) {
-                hyperTrackMap.bind(hyperTrackViews, deviceId);
-                hyperTrackMap.subscribeActiveTrips();
+        if (!deviceId.equals(subscribedDeviceId)) {
+            subscribedDeviceId = deviceId;
+            if (hyperTrackViews != null) {
+                hyperTrackViews.subscribeToDeviceUpdates(deviceId, this);
+                if (hyperTrackMap != null) {
+                    hyperTrackMap.bind(hyperTrackViews, deviceId);
+                }
             }
+        }
+    }
+
+    /**
+     * Subscribes trip {@link DeviceUpdatesHandler} updates on map e.g. {@link #onTripUpdateReceived(Trip)}
+     *
+     * @param deviceId HyperTrack device id (HyperTrack.getInstance(context, "HYPER_TRACK_PUB_KEY").getDeviceID())
+     * @param tripId id of trip to update
+     */
+    public void subscribeToTrip(String deviceId, String tripId) {
+        subscribeToDevice(deviceId);
+        if (hyperTrackMap != null) {
+            hyperTrackMap.subscribeTrip(tripId);
         }
     }
 
@@ -191,5 +208,18 @@ public class HyperTrackMapFragment extends SupportMapFragment
     @Override
     public void onCompleted(String s) {
 
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        if (hyperTrackViews != null) {
+            hyperTrackViews.stopAllUpdates();
+            hyperTrackViews = null;
+        }
+        if (hyperTrackMap != null) {
+            hyperTrackMap.destroy();
+            hyperTrackMap = null;
+        }
     }
 }

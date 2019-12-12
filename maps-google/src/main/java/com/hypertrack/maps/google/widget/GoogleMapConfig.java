@@ -30,11 +30,10 @@ public class GoogleMapConfig {
 
     int mapAnimatePadding;
 
-    public static GoogleMapConfig getDefault(Context context) {
-        return new GoogleMapConfig.Builder(context).build();
-    }
-
     /**
+     * Creates new GoogleMapConfig.Builder with styles from application theme or default resources.
+     * Don't use application context, only components have have the app theme and all described styles there.
+     *
      * @param context Activity context, with main application theme. The context is needed to get styles.
      * @return new instance of GoogleMapConfig.Builder.
      */
@@ -124,7 +123,7 @@ public class GoogleMapConfig {
         private TripOptions.StyleAttrs tripStyleAttrs = new TripOptions.StyleAttrs();
         private TripOptions.StyleAttrs tripCompletedStyleAttrs = new TripOptions.StyleAttrs();
 
-        private boolean isPassedRouteShowed = true;
+        private boolean isPassedRouteVisible = true;
 
         @SuppressWarnings("unused")
         private Builder(Context context) {
@@ -185,6 +184,7 @@ public class GoogleMapConfig {
                     .fillColor(myLocationAccuracyColor)
                     .strokeColor(myLocationAccuracyStrokeColor)
                     .strokeWidth(accuracyStrokeWidth);
+            config.tripCompletedOptions = new TripOptions(tripCompletedStyleAttrs).build();
         }
 
         public Builder locationMarker(MarkerOptions markerOptions) {
@@ -212,8 +212,8 @@ public class GoogleMapConfig {
             return this;
         }
 
-        public Builder showPassedRoute(boolean showed) {
-            isPassedRouteShowed = showed;
+        public Builder showPassedRoute(boolean isVisible) {
+            isPassedRouteVisible = isVisible;
             return this;
         }
 
@@ -226,15 +226,15 @@ public class GoogleMapConfig {
 
             if (config.tripOptions == null) {
                 config.tripOptions = new TripOptions(tripStyleAttrs).build();
-                if (!isPassedRouteShowed) {
+                if (!isPassedRouteVisible) {
                     config.tripOptions.tripPassedRoutePolyline = null;
                 }
             }
             if (config.tripCompletedOptions == null) {
-                config.tripCompletedOptions = new TripOptions(tripCompletedStyleAttrs).build();
-                if (!isPassedRouteShowed) {
-                    config.tripCompletedOptions.tripPassedRoutePolyline = null;
-                }
+                config.tripCompletedOptions = config.tripOptions;
+            }
+            if (!isPassedRouteVisible) {
+                config.tripCompletedOptions.tripPassedRoutePolyline = null;
             }
 
             return config;
