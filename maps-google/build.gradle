@@ -58,7 +58,7 @@ dependencies {
     implementation 'androidx.appcompat:appcompat:1.1.0'
     implementation "com.google.android.gms:play-services-maps:$library_play_service_version"
 
-    implementation 'com.hypertrack:hypertrack-views:0.6.0-SNAPSHOT'
+    implementation 'com.hypertrack:hypertrack-views:0.6.0'
 
     testImplementation 'junit:junit:4.12'
     androidTestImplementation 'androidx.test:runner:1.2.0'

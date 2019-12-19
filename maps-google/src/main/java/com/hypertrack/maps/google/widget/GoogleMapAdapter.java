@@ -11,7 +11,6 @@ import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
-import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.Circle;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.LatLngBounds;
@@ -54,6 +53,7 @@ public class GoogleMapAdapter extends MapAdapter {
     private final Map<String, MapObject> gMapObjects = new HashMap<>();
 
     private boolean isLocationEnabled = true;
+    private boolean isCameraFixed = false;
 
     private final TripFilters tripFilter = new TripFilters();
 
@@ -64,7 +64,8 @@ public class GoogleMapAdapter extends MapAdapter {
      * @return instance of MapObject if it has the marker, otherwise null.
      */
     public MapObject findMapObjectByMarker(Marker marker) {
-        for (MapObject mapObject : gMapObjects.values()) {
+        List<MapObject> mapObjects = new ArrayList<>(gMapObjects.values());
+        for (MapObject mapObject : mapObjects) {
             if (mapObject.getType() == HyperTrackMap.LOCATION_MAP_OBJECT_TYPE) {
                 GMapLocation mapLocation = (GMapLocation) mapObject;
                 if (mapLocation.has(marker)) {
@@ -111,6 +112,17 @@ public class GoogleMapAdapter extends MapAdapter {
      * {@inheritDoc}
      */
     @Override
+    public void setCameraFixedEnabled(boolean enabled) {
+        isCameraFixed = enabled;
+        if (enabled) {
+            updateCamera();
+        }
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
     public void moveToLocation(@NonNull HTLatLng latLng) {
         if (mGoogleMap != null) {
             final CameraUpdate cameraUpdate = CameraUpdateFactory.newLatLngZoom(
@@ -131,32 +143,38 @@ public class GoogleMapAdapter extends MapAdapter {
      */
     @Override
     public void moveToTrip(@NonNull Trip trip) {
-        final LatLngBounds.Builder builder = new LatLngBounds.Builder();
-        if (currentLocation != null) {
-            builder.include(new LatLng(currentLocation.getLatitude(), currentLocation.getLongitude()));
-        }
-        if (trip.getDestination() != null) {
-            builder.include(new LatLng(trip.getDestination().getLatitude(), trip.getDestination().getLongitude()));
-        }
-        if (trip.getSummary() != null) {
-            for (com.hypertrack.sdk.views.dao.Location location : trip.getSummary().getLocations()) {
-                builder.include(new LatLng(location.getLatitude(), location.getLongitude()));
+        if (mGoogleMap != null) {
+            final LatLngBounds.Builder builder = new LatLngBounds.Builder();
+            if (currentLocation != null) {
+                builder.include(new LatLng(currentLocation.getLatitude(), currentLocation.getLongitude()));
             }
-        }
-        if (trip.getEstimate() != null && trip.getEstimate().getRoute() != null) {
-            for (Trip.Point2D point2D : trip.getEstimate().getRoute().getPoints()) {
-                builder.include(new LatLng(point2D.getLatitude(), point2D.getLongitude()));
+            if (trip.getDestination() != null) {
+                builder.include(new LatLng(trip.getDestination().getLatitude(), trip.getDestination().getLongitude()));
             }
-        }
-        mGoogleMap.get().setOnMapLoadedCallback(new GoogleMap.OnMapLoadedCallback() {
-            @Override
-            public void onMapLoaded() {
+            if (trip.getSummary() != null) {
+                for (com.hypertrack.sdk.views.dao.Location location : trip.getSummary().getLocations()) {
+                    builder.include(new LatLng(location.getLatitude(), location.getLongitude()));
+                }
+            }
+            if (trip.getEstimate() != null && trip.getEstimate().getRoute() != null) {
+                for (Trip.Point2D point2D : trip.getEstimate().getRoute().getPoints()) {
+                    builder.include(new LatLng(point2D.getLatitude(), point2D.getLongitude()));
+                }
+            }
+            if (mConfig.boundingBoxWidth == -1 && mConfig.boundingBoxHeight == -1) {
                 mGoogleMap.get().animateCamera(
-                        CameraUpdateFactory.newLatLngBounds(builder.build(), mConfig.mapAnimatePadding),
+                        CameraUpdateFactory.newLatLngBounds(builder.build(), mConfig.mapBoundingBoxPadding),
+                        1000,
+                        null);
+            } else {
+                mGoogleMap.get().animateCamera(
+                        CameraUpdateFactory.newLatLngBounds(builder.build(),
+                                mConfig.boundingBoxWidth, mConfig.boundingBoxHeight,
+                                mConfig.mapBoundingBoxPadding),
                         1000,
                         null);
             }
-        });
+        }
     }
 
     /**
@@ -179,7 +197,7 @@ public class GoogleMapAdapter extends MapAdapter {
                 mapTrip = new GMapTrip(trip);
                 gMapObjects.put(trip.getTripId(), mapTrip);
             }
-            if (mapTrip.isAdded) {
+            if (mapTrip.isAdded()) {
                 mapTrip.update(trip);
             } else {
                 if (tripFilter.apply(trip)) mapTrip.addTo(this);
@@ -196,12 +214,13 @@ public class GoogleMapAdapter extends MapAdapter {
      */
     @Override
     public void updateMyLocation(@Nullable Location location) {
+        Log.d(TAG, "updateMyLocation: " + location);
         currentLocation = location;
 
         if (isLocationEnabled && mGoogleMap != null && location != null) {
 
             GMapLocation mapLocation = (GMapLocation) gMapObjects.get(MY_LOCATION_KEY);
-            if (mapLocation == null || !mapLocation.isAdded) {
+            if (mapLocation == null || !mapLocation.isAdded()) {
                 mapLocation = new GMapLocation(location);
                 mapLocation.addTo(this);
                 gMapObjects.put(MY_LOCATION_KEY, mapLocation);
@@ -218,13 +237,14 @@ public class GoogleMapAdapter extends MapAdapter {
             for (MapObject item : gMapObjects.values()) {
                 if (item instanceof GMapTrip) {
                     GMapTrip gMapTrip = (GMapTrip) item;
-                    if (gMapTrip.trip.getStatus().equals("active") && gMapTrip.isAdded) {
+                    if (gMapTrip.trip.getStatus().equals("active") && gMapTrip.isAdded()) {
                         gMapTrip.updateMyPosition(currentLocation);
                         break;
                     }
                 }
             }
         }
+        updateCamera();
     }
 
     /**
@@ -233,6 +253,67 @@ public class GoogleMapAdapter extends MapAdapter {
     @Override
     public void notifyDataSetChanged() {
         remapTrips();
+    }
+
+    private void remapTrips() {
+        if (mGoogleMap != null) {
+
+            for (MapObject mapObject : gMapObjects.values()) {
+                if (mapObject.getType() == HyperTrackMap.TRIP_MAP_OBJECT_TYPE) {
+                    GMapTrip mapTrip = (GMapTrip) mapObject;
+                    Log.d(TAG, "remapTrips trip - " + mapTrip.trip.getTripId() + " : " + tripFilter.apply(mapTrip.trip));
+                    if (!tripFilter.apply(mapTrip.trip)) {
+                        mapTrip.remove();
+                    } else if (!mapTrip.isAdded()) {
+                        mapTrip.addTo(this);
+                    } else {
+                        mapTrip.update(mapTrip.trip);
+                    }
+                }
+            }
+        }
+        updateCamera();
+    }
+
+    private void updateCamera() {
+        if (mGoogleMap != null && isCameraFixed) {
+
+            final LatLngBounds.Builder builder = new LatLngBounds.Builder();
+            for (MapObject mapObject : gMapObjects.values()) {
+                if (mapObject.isAdded()) {
+                    if (mapObject.getType() == HyperTrackMap.LOCATION_MAP_OBJECT_TYPE) {
+                        GMapLocation mapLocation = (GMapLocation) mapObject;
+                        builder.include(new LatLng(mapLocation.location.getLatitude(), mapLocation.location.getLongitude()));
+                    } else if (mapObject.getType() == HyperTrackMap.TRIP_MAP_OBJECT_TYPE) {
+                        GMapTrip gMapTrip = (GMapTrip) mapObject;
+                        builder.include(gMapTrip.destination);
+                        if (!gMapTrip.estimateRoute.isEmpty()) {
+                            for (LatLng latLng : gMapTrip.estimateRoute) {
+                                builder.include(latLng);
+                            }
+                        }
+                        if (!gMapTrip.summaryRoute.isEmpty()) {
+                            for (LatLng latLng : gMapTrip.summaryRoute) {
+                                builder.include(latLng);
+                            }
+                        }
+                    }
+                }
+            }
+            if (mConfig.boundingBoxWidth == -1 && mConfig.boundingBoxHeight == -1) {
+                mGoogleMap.get().animateCamera(
+                        CameraUpdateFactory.newLatLngBounds(builder.build(), mConfig.mapBoundingBoxPadding),
+                        1000,
+                        null);
+            } else {
+                mGoogleMap.get().animateCamera(
+                        CameraUpdateFactory.newLatLngBounds(builder.build(),
+                                mConfig.boundingBoxWidth, mConfig.boundingBoxHeight,
+                                mConfig.mapBoundingBoxPadding),
+                        1000,
+                        null);
+            }
+        }
     }
 
     /**
@@ -248,22 +329,6 @@ public class GoogleMapAdapter extends MapAdapter {
         if (mGoogleMap != null) {
             mGoogleMap.clear();
             mGoogleMap = null;
-        }
-    }
-
-    private void remapTrips() {
-        List<MapObject> mapObjects = new ArrayList<>(gMapObjects.values());
-
-        for (MapObject mapObject : mapObjects) {
-            if (mapObject.getType() == HyperTrackMap.TRIP_MAP_OBJECT_TYPE) {
-                GMapTrip mapTrip = (GMapTrip) mapObject;
-                Log.d(TAG, "remapTrips trip - " + mapTrip.trip.getTripId() + " : " + tripFilter.apply(mapTrip.trip));
-                if (!tripFilter.apply(mapTrip.trip)) {
-                    mapTrip.remove();
-                } else if (!mapTrip.isAdded) {
-                    mapTrip.addTo(this);
-                }
-            }
         }
     }
 
@@ -296,8 +361,6 @@ public class GoogleMapAdapter extends MapAdapter {
         private Circle accuracyCircle;
         private Marker locationMarker;
         private Marker bearingMarker;
-
-        private boolean isAdded = false;
 
         private GMapLocation(@NonNull Location location) {
             super(location);
@@ -391,14 +454,12 @@ public class GoogleMapAdapter extends MapAdapter {
      * A google implementation of MapTrip. This class extends {@link MapTrip} and stores trip data, markers, polylines.
      */
     public static class GMapTrip extends MapTrip {
-        private GoogleMapConfig.TripOptions tripOptions;
-        private GoogleMapConfig.TripOptions tripCompletedOptions;
+        private GoogleMapConfig mConfig;
 
         private LatLng destination;
         private List<LatLng> summaryRoute = new ArrayList<>();
         private List<LatLng> estimateRoute = new ArrayList<>();
         private LatLng myPosition;
-        private boolean isAdded = false;
 
         Marker originMarker;
         Marker destinationMarker;
@@ -453,13 +514,12 @@ public class GoogleMapAdapter extends MapAdapter {
 
         private void addTo(@NonNull GoogleMapAdapter mapAdapter) {
             Log.d(TAG, "add trip - " + trip.getTripId());
-            tripOptions = mapAdapter.mConfig.tripOptions;
-            tripCompletedOptions = mapAdapter.mConfig.tripCompletedOptions;
+            mConfig = mapAdapter.mConfig;
 
             if (!isAdded) {
-                GoogleMapConfig.TripOptions options = trip.getStatus().equals("active") ?
-                        tripOptions
-                        : tripCompletedOptions;
+                GoogleMapConfig.TripOptions options = trip.getStatus().equals("completed") ?
+                        mConfig.tripCompletedOptions
+                        : mConfig.tripOptions;
 
                 if (options.tripPassedRoutePolyline != null) {
                     routePassedPolyline = mapAdapter.mGoogleMap.get().addPolyline(options.tripPassedRoutePolyline);
@@ -473,8 +533,8 @@ public class GoogleMapAdapter extends MapAdapter {
                                     .position(destination)
                     );
                 }
-                if (!summaryRoute.isEmpty() && routePassedPolyline != null) {
-                    if (options.tripOriginMarker != null) {
+                if (routePassedPolyline != null && (mConfig.isPassedRouteVisible || trip.getStatus().equals("completed"))) {
+                    if (options.tripOriginMarker != null && !summaryRoute.isEmpty()) {
                         originMarker = mapAdapter.mGoogleMap.get().addMarker(
                                 options.tripOriginMarker
                                         .anchor(0.5f, 0.5f)
@@ -483,7 +543,7 @@ public class GoogleMapAdapter extends MapAdapter {
                     }
                     routePassedPolyline.setPoints(summaryRoute);
                 }
-                if (!estimateRoute.isEmpty()) {
+                if (!estimateRoute.isEmpty() && routeCommingPolyline != null) {
                     routeCommingPolyline.setPoints(estimateRoute);
                 }
 
@@ -503,7 +563,7 @@ public class GoogleMapAdapter extends MapAdapter {
         public void update(@NonNull Trip trip) {
             Log.d(TAG, "update trip - " + trip.getTripId());
 
-            boolean isStatusChanged = this.trip.getStatus().equals(trip.getStatus());
+            boolean isStatusChanged = !this.trip.getStatus().equals(trip.getStatus());
             this.trip = trip;
             updateData();
 
@@ -511,9 +571,9 @@ public class GoogleMapAdapter extends MapAdapter {
 
                 if (isStatusChanged) {
 
-                    GoogleMapConfig.TripOptions options = trip.getStatus().equals("active") ?
-                            tripOptions
-                            : tripCompletedOptions;
+                    GoogleMapConfig.TripOptions options = trip.getStatus().equals("completed") ?
+                            mConfig.tripCompletedOptions
+                            : mConfig.tripOptions;
                     if (destinationMarker != null) {
                         destinationMarker.setIcon(options.tripDestinationMarker.getIcon());
                     }
@@ -533,24 +593,26 @@ public class GoogleMapAdapter extends MapAdapter {
                 if (destinationMarker != null && destination != null) {
                     destinationMarker.setPosition(destination);
                 }
-                if (!summaryRoute.isEmpty() && routePassedPolyline != null) {
-                    if (originMarker != null) {
+                if (routePassedPolyline != null && (mConfig.isPassedRouteVisible || trip.getStatus().equals("completed"))) {
+                    if (originMarker != null && !summaryRoute.isEmpty()) {
                         originMarker.setPosition(summaryRoute.get(0));
                     }
                     routePassedPolyline.setPoints(summaryRoute);
-                } else if (!estimateRoute.isEmpty()) {
+                } else if (routeCommingPolyline != null) {
                     List<LatLng> points = new ArrayList<>();
-                    if (myPosition == null) {
-                        points.addAll(estimateRoute);
-                    } else {
-                        points.add(myPosition);
-                        int position = locationPositionInRoute(estimateRoute, myPosition);
-                        if (position != estimateRoute.size() - 1) {
-                            points.addAll(estimateRoute.subList(position + 1, estimateRoute.size()));
+                    if (!estimateRoute.isEmpty()) {
+                        if (myPosition == null) {
+                            points.addAll(estimateRoute);
+                        } else {
+                            points.add(myPosition);
+                            int position = locationPositionInRoute(estimateRoute, myPosition);
+                            if (position != estimateRoute.size() - 1) {
+                                points.addAll(estimateRoute.subList(position + 1, estimateRoute.size()));
+                            }
                         }
-                    }
-                    if (destination != null) {
-                        points.add(destination);
+                        if (destination != null) {
+                            points.add(destination);
+                        }
                     }
                     routeCommingPolyline.setPoints(points);
                 }
