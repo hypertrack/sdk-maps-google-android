@@ -16,9 +16,15 @@ import com.google.android.gms.maps.model.PatternItem;
 import com.google.android.gms.maps.model.PolylineOptions;
 import com.hypertrack.maps.google.R;
 import com.hypertrack.maps.google.utils.TileSystem;
+import com.hypertrack.sdk.views.maps.models.MapTrip;
 
 import java.util.Collections;
 
+/**
+ * Class with configuration parameters for GoogleMapAdapter e.g marker option, polyline option, camera update.
+ *
+ * @see GoogleMapAdapter
+ */
 @SuppressWarnings("unused")
 public class GoogleMapConfig {
     MarkerOptions locationMarker;
@@ -28,7 +34,11 @@ public class GoogleMapConfig {
     GoogleMapConfig.TripOptions tripOptions;
     GoogleMapConfig.TripOptions tripCompletedOptions;
 
-    int mapAnimatePadding;
+    int mapBoundingBoxPadding;
+    int boundingBoxWidth = -1;
+    int boundingBoxHeight = -1;
+
+    boolean isPassedRouteVisible = true;
 
     /**
      * Creates new GoogleMapConfig.Builder with styles from application theme or default resources.
@@ -48,6 +58,9 @@ public class GoogleMapConfig {
     private GoogleMapConfig() {
     }
 
+    /**
+     * Class provides detailed configuration of trip markers {@link MapTrip}
+     */
     public static class TripOptions {
 
         MarkerOptions tripOriginMarker;
@@ -82,21 +95,45 @@ public class GoogleMapConfig {
             }
         }
 
+        /**
+         * Defines MarkerOptions for a trip origin marker.
+         *
+         * @param markerOptions a new set of marker options {@link MarkerOptions}.
+         * @return this instance of the class.
+         */
         public TripOptions tripOriginMarker(MarkerOptions markerOptions) {
             this.tripOriginMarker = markerOptions;
             return this;
         }
 
+        /**
+         * Defines MarkerOptions for a trip destination marker.
+         *
+         * @param markerOptions a new set of marker options {@link MarkerOptions}.
+         * @return this instance of the class.
+         */
         public TripOptions tripDestinationMarker(MarkerOptions markerOptions) {
             this.tripDestinationMarker = markerOptions;
             return this;
         }
 
+        /**
+         * Defines PolylineOptions for a trip passed route.
+         *
+         * @param polylineOptions a new set of polyline options {@link PolylineOptions}.
+         * @return this instance of the class.
+         */
         public TripOptions tripPassedRoutePolyline(PolylineOptions polylineOptions) {
             this.tripPassedRoutePolyline = polylineOptions;
             return this;
         }
 
+        /**
+         * Defines PolylineOptions for a trip coming route.
+         *
+         * @param polylineOptions a new set of polyline options {@link PolylineOptions}.
+         * @return this instance of the class.
+         */
         public TripOptions tripComingRoutePolyline(PolylineOptions polylineOptions) {
             this.tripComingRoutePolyline = polylineOptions;
             return this;
@@ -114,6 +151,10 @@ public class GoogleMapConfig {
         }
     }
 
+    /**
+     * Class provides interface to configure {@link GoogleMapConfig}. By default it is filled by app theme or hypertrack styles.
+     * You can set certain params and others remains by default.
+     */
     @SuppressWarnings({"unused", "WeakerAccess"})
     public static class Builder {
         private final GoogleMapConfig config = new GoogleMapConfig();
@@ -123,8 +164,6 @@ public class GoogleMapConfig {
         private TripOptions.StyleAttrs tripStyleAttrs = new TripOptions.StyleAttrs();
         private TripOptions.StyleAttrs tripCompletedStyleAttrs = new TripOptions.StyleAttrs();
 
-        private boolean isPassedRouteVisible = true;
-
         @SuppressWarnings("unused")
         private Builder(Context context) {
             Resources r = context.getResources();
@@ -132,7 +171,7 @@ public class GoogleMapConfig {
             int size = (int) (256 * density);
             TileSystem.setTileSize(size);
 
-            config.mapAnimatePadding = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 100,
+            config.mapBoundingBoxPadding = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 16,
                     r.getDisplayMetrics()
             );
             float tripRouteWidth = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 4,
@@ -187,36 +226,90 @@ public class GoogleMapConfig {
             config.tripCompletedOptions = new TripOptions(tripCompletedStyleAttrs).build();
         }
 
+        /**
+         * Defines MarkerOptions for a my location marker.
+         *
+         * @param markerOptions a new set of marker options {@link MarkerOptions}.
+         * @return this instance of the class.
+         */
         public Builder locationMarker(MarkerOptions markerOptions) {
             config.locationMarker = markerOptions;
             return this;
         }
 
+        /**
+         * Defines MarkerOptions for a my location bearing marker.
+         *
+         * @param markerOptions a new set of marker options {@link MarkerOptions}.
+         * @return this instance of the class.
+         */
         public Builder bearingMarker(MarkerOptions markerOptions) {
             config.bearingMarker = markerOptions;
             return this;
         }
 
+        /**
+         * Defines CircleOptions for a my location accuracy circle.
+         *
+         * @param circleOptions a new set of marker options {@link CircleOptions}.
+         * @return this instance of the class.
+         */
         public Builder accuracyCircle(CircleOptions circleOptions) {
             config.accuracyCircle = circleOptions;
             return this;
         }
 
+        /**
+         * Defines TripOptions for an active trips.
+         *
+         * @param tripOptions a new set of trip options {@link TripOptions}.
+         * @return this instance of the class.
+         */
         public Builder tripOptions(TripOptions tripOptions) {
             config.tripOptions = tripOptions;
             return this;
         }
 
+        /**
+         * Defines TripOptions for an completed trips.
+         *
+         * @param tripOptions a new set of trip options {@link TripOptions}.
+         * @return this instance of the class.
+         */
         public Builder tripCompletedOptions(TripOptions tripOptions) {
             config.tripCompletedOptions = tripOptions;
             return this;
         }
 
+        /**
+         * Setup visibility of passed routes.
+         *
+         * @param isVisible true if should be shown, false otherwise.
+         * @return this instance of the class.
+         */
         public Builder showPassedRoute(boolean isVisible) {
-            isPassedRouteVisible = isVisible;
+            config.isPassedRouteVisible = isVisible;
             return this;
         }
 
+        /**
+         * Setup bounding box of specified dimensions.
+         *
+         * @param width bounding box width in pixels (px)
+         * @param height bounding box height in pixels (px)
+         * @return this instance of the class.
+         */
+        public Builder boundingBoxDimensions(int width, int height) {
+            config.boundingBoxWidth = width;
+            config.boundingBoxHeight = height;
+            return this;
+        }
+
+        /**
+         * Builds map configuration of specified options.
+         *
+         * @return the instance of {@link GoogleMapConfig}.
+         */
         public GoogleMapConfig build() {
             if (config.locationMarker == null) {
                 config.locationMarker = new MarkerOptions()
@@ -226,15 +319,9 @@ public class GoogleMapConfig {
 
             if (config.tripOptions == null) {
                 config.tripOptions = new TripOptions(tripStyleAttrs).build();
-                if (!isPassedRouteVisible) {
-                    config.tripOptions.tripPassedRoutePolyline = null;
-                }
             }
             if (config.tripCompletedOptions == null) {
                 config.tripCompletedOptions = config.tripOptions;
-            }
-            if (!isPassedRouteVisible) {
-                config.tripCompletedOptions.tripPassedRoutePolyline = null;
             }
 
             return config;

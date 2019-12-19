@@ -112,7 +112,7 @@ public class GoogleMapAdapter extends MapAdapter {
      * {@inheritDoc}
      */
     @Override
-    public void setFixedCameraEnabled(boolean enabled) {
+    public void setCameraFixedEnabled(boolean enabled) {
         isCameraFixed = enabled;
         if (enabled) {
             updateCamera();
@@ -161,15 +161,19 @@ public class GoogleMapAdapter extends MapAdapter {
                     builder.include(new LatLng(point2D.getLatitude(), point2D.getLongitude()));
                 }
             }
-            mGoogleMap.get().setOnMapLoadedCallback(new GoogleMap.OnMapLoadedCallback() {
-                @Override
-                public void onMapLoaded() {
-                    mGoogleMap.get().animateCamera(
-                            CameraUpdateFactory.newLatLngBounds(builder.build(), mConfig.mapAnimatePadding),
-                            1000,
-                            null);
-                }
-            });
+            if (mConfig.boundingBoxWidth == -1 && mConfig.boundingBoxHeight == -1) {
+                mGoogleMap.get().animateCamera(
+                        CameraUpdateFactory.newLatLngBounds(builder.build(), mConfig.mapBoundingBoxPadding),
+                        1000,
+                        null);
+            } else {
+                mGoogleMap.get().animateCamera(
+                        CameraUpdateFactory.newLatLngBounds(builder.build(),
+                                mConfig.boundingBoxWidth, mConfig.boundingBoxHeight,
+                                mConfig.mapBoundingBoxPadding),
+                        1000,
+                        null);
+            }
         }
     }
 
@@ -193,7 +197,7 @@ public class GoogleMapAdapter extends MapAdapter {
                 mapTrip = new GMapTrip(trip);
                 gMapObjects.put(trip.getTripId(), mapTrip);
             }
-            if (mapTrip.isAdded) {
+            if (mapTrip.isAdded()) {
                 mapTrip.update(trip);
             } else {
                 if (tripFilter.apply(trip)) mapTrip.addTo(this);
@@ -210,12 +214,13 @@ public class GoogleMapAdapter extends MapAdapter {
      */
     @Override
     public void updateMyLocation(@Nullable Location location) {
+        Log.d(TAG, "updateMyLocation: " + location);
         currentLocation = location;
 
         if (isLocationEnabled && mGoogleMap != null && location != null) {
 
             GMapLocation mapLocation = (GMapLocation) gMapObjects.get(MY_LOCATION_KEY);
-            if (mapLocation == null || !mapLocation.isAdded) {
+            if (mapLocation == null || !mapLocation.isAdded()) {
                 mapLocation = new GMapLocation(location);
                 mapLocation.addTo(this);
                 gMapObjects.put(MY_LOCATION_KEY, mapLocation);
@@ -232,7 +237,7 @@ public class GoogleMapAdapter extends MapAdapter {
             for (MapObject item : gMapObjects.values()) {
                 if (item instanceof GMapTrip) {
                     GMapTrip gMapTrip = (GMapTrip) item;
-                    if (gMapTrip.trip.getStatus().equals("active") && gMapTrip.isAdded) {
+                    if (gMapTrip.trip.getStatus().equals("active") && gMapTrip.isAdded()) {
                         gMapTrip.updateMyPosition(currentLocation);
                         break;
                     }
@@ -252,16 +257,17 @@ public class GoogleMapAdapter extends MapAdapter {
 
     private void remapTrips() {
         if (mGoogleMap != null) {
-            List<MapObject> mapObjects = new ArrayList<>(gMapObjects.values());
 
-            for (MapObject mapObject : mapObjects) {
+            for (MapObject mapObject : gMapObjects.values()) {
                 if (mapObject.getType() == HyperTrackMap.TRIP_MAP_OBJECT_TYPE) {
                     GMapTrip mapTrip = (GMapTrip) mapObject;
                     Log.d(TAG, "remapTrips trip - " + mapTrip.trip.getTripId() + " : " + tripFilter.apply(mapTrip.trip));
                     if (!tripFilter.apply(mapTrip.trip)) {
                         mapTrip.remove();
-                    } else if (!mapTrip.isAdded) {
+                    } else if (!mapTrip.isAdded()) {
                         mapTrip.addTo(this);
+                    } else {
+                        mapTrip.update(mapTrip.trip);
                     }
                 }
             }
@@ -271,36 +277,42 @@ public class GoogleMapAdapter extends MapAdapter {
 
     private void updateCamera() {
         if (mGoogleMap != null && isCameraFixed) {
+
             final LatLngBounds.Builder builder = new LatLngBounds.Builder();
-            List<MapObject> mapObjects = new ArrayList<>(gMapObjects.values());
-            for (MapObject mapObject : mapObjects) {
-                if (mapObject.getType() == HyperTrackMap.LOCATION_MAP_OBJECT_TYPE) {
-                    GMapLocation mapLocation = (GMapLocation) mapObject;
-                    builder.include(new LatLng(mapLocation.location.getLatitude(), mapLocation.location.getLongitude()));
-                } else if (mapObject.getType() == HyperTrackMap.TRIP_MAP_OBJECT_TYPE) {
-                    GMapTrip gMapTrip = (GMapTrip) mapObject;
-                    builder.include(gMapTrip.destination);
-                    if (!gMapTrip.estimateRoute.isEmpty()) {
-                        for (LatLng latLng : gMapTrip.estimateRoute) {
-                            builder.include(latLng);
+            for (MapObject mapObject : gMapObjects.values()) {
+                if (mapObject.isAdded()) {
+                    if (mapObject.getType() == HyperTrackMap.LOCATION_MAP_OBJECT_TYPE) {
+                        GMapLocation mapLocation = (GMapLocation) mapObject;
+                        builder.include(new LatLng(mapLocation.location.getLatitude(), mapLocation.location.getLongitude()));
+                    } else if (mapObject.getType() == HyperTrackMap.TRIP_MAP_OBJECT_TYPE) {
+                        GMapTrip gMapTrip = (GMapTrip) mapObject;
+                        builder.include(gMapTrip.destination);
+                        if (!gMapTrip.estimateRoute.isEmpty()) {
+                            for (LatLng latLng : gMapTrip.estimateRoute) {
+                                builder.include(latLng);
+                            }
                         }
-                    }
-                    if (!gMapTrip.summaryRoute.isEmpty()) {
-                        for (LatLng latLng : gMapTrip.summaryRoute) {
-                            builder.include(latLng);
+                        if (!gMapTrip.summaryRoute.isEmpty()) {
+                            for (LatLng latLng : gMapTrip.summaryRoute) {
+                                builder.include(latLng);
+                            }
                         }
                     }
                 }
             }
-            mGoogleMap.get().setOnMapLoadedCallback(new GoogleMap.OnMapLoadedCallback() {
-                @Override
-                public void onMapLoaded() {
-                    mGoogleMap.get().animateCamera(
-                            CameraUpdateFactory.newLatLngBounds(builder.build(), mConfig.mapAnimatePadding),
-                            700,
-                            null);
-                }
-            });
+            if (mConfig.boundingBoxWidth == -1 && mConfig.boundingBoxHeight == -1) {
+                mGoogleMap.get().animateCamera(
+                        CameraUpdateFactory.newLatLngBounds(builder.build(), mConfig.mapBoundingBoxPadding),
+                        1000,
+                        null);
+            } else {
+                mGoogleMap.get().animateCamera(
+                        CameraUpdateFactory.newLatLngBounds(builder.build(),
+                                mConfig.boundingBoxWidth, mConfig.boundingBoxHeight,
+                                mConfig.mapBoundingBoxPadding),
+                        1000,
+                        null);
+            }
         }
     }
 
@@ -349,8 +361,6 @@ public class GoogleMapAdapter extends MapAdapter {
         private Circle accuracyCircle;
         private Marker locationMarker;
         private Marker bearingMarker;
-
-        private boolean isAdded = false;
 
         private GMapLocation(@NonNull Location location) {
             super(location);
@@ -444,14 +454,12 @@ public class GoogleMapAdapter extends MapAdapter {
      * A google implementation of MapTrip. This class extends {@link MapTrip} and stores trip data, markers, polylines.
      */
     public static class GMapTrip extends MapTrip {
-        private GoogleMapConfig.TripOptions tripOptions;
-        private GoogleMapConfig.TripOptions tripCompletedOptions;
+        private GoogleMapConfig mConfig;
 
         private LatLng destination;
         private List<LatLng> summaryRoute = new ArrayList<>();
         private List<LatLng> estimateRoute = new ArrayList<>();
         private LatLng myPosition;
-        private boolean isAdded = false;
 
         Marker originMarker;
         Marker destinationMarker;
@@ -506,13 +514,12 @@ public class GoogleMapAdapter extends MapAdapter {
 
         private void addTo(@NonNull GoogleMapAdapter mapAdapter) {
             Log.d(TAG, "add trip - " + trip.getTripId());
-            tripOptions = mapAdapter.mConfig.tripOptions;
-            tripCompletedOptions = mapAdapter.mConfig.tripCompletedOptions;
+            mConfig = mapAdapter.mConfig;
 
             if (!isAdded) {
-                GoogleMapConfig.TripOptions options = trip.getStatus().equals("active") ?
-                        tripOptions
-                        : tripCompletedOptions;
+                GoogleMapConfig.TripOptions options = trip.getStatus().equals("completed") ?
+                        mConfig.tripCompletedOptions
+                        : mConfig.tripOptions;
 
                 if (options.tripPassedRoutePolyline != null) {
                     routePassedPolyline = mapAdapter.mGoogleMap.get().addPolyline(options.tripPassedRoutePolyline);
@@ -526,8 +533,8 @@ public class GoogleMapAdapter extends MapAdapter {
                                     .position(destination)
                     );
                 }
-                if (!summaryRoute.isEmpty() && routePassedPolyline != null) {
-                    if (options.tripOriginMarker != null) {
+                if (routePassedPolyline != null && (mConfig.isPassedRouteVisible || trip.getStatus().equals("completed"))) {
+                    if (options.tripOriginMarker != null && !summaryRoute.isEmpty()) {
                         originMarker = mapAdapter.mGoogleMap.get().addMarker(
                                 options.tripOriginMarker
                                         .anchor(0.5f, 0.5f)
@@ -564,9 +571,9 @@ public class GoogleMapAdapter extends MapAdapter {
 
                 if (isStatusChanged) {
 
-                    GoogleMapConfig.TripOptions options = trip.getStatus().equals("active") ?
-                            tripOptions
-                            : tripCompletedOptions;
+                    GoogleMapConfig.TripOptions options = trip.getStatus().equals("completed") ?
+                            mConfig.tripCompletedOptions
+                            : mConfig.tripOptions;
                     if (destinationMarker != null) {
                         destinationMarker.setIcon(options.tripDestinationMarker.getIcon());
                     }
@@ -586,7 +593,7 @@ public class GoogleMapAdapter extends MapAdapter {
                 if (destinationMarker != null && destination != null) {
                     destinationMarker.setPosition(destination);
                 }
-                if (routePassedPolyline != null) {
+                if (routePassedPolyline != null && (mConfig.isPassedRouteVisible || trip.getStatus().equals("completed"))) {
                     if (originMarker != null && !summaryRoute.isEmpty()) {
                         originMarker.setPosition(summaryRoute.get(0));
                     }
