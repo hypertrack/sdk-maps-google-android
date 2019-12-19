@@ -41,6 +41,7 @@ allprojects {
 ```
 dependencies {
     ...
+    implementation 'com.hypertrack:hypertrack-views:0.6.0' // !important >= 0.6.0
     implementation 'com.hypertrack:maps-google:0.1.1'
 }
 ```
