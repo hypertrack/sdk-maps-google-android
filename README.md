@@ -1,11 +1,11 @@
 # HyperTrack Android Maps utility library for google maps
 
-![Android Views SDK](https://img.shields.io/badge/Android%20Views%20SDK-0.6.0-brightgreen.svg)
+![Android HyperTrackViews SDK](https://img.shields.io/badge/Android%20Views%20SDK-0.6.0-brightgreen.svg)
 
 [HyperTrack](https://www.hypertrack.com) lets you add live location tracking to your mobile app. Live location is made available along with ongoing activity, 
 tracking controls and tracking outage with reasons.
 
-HyperTrack Android Maps SDK is an implementation for [Views SDK](https://github.com/hypertrack/views-android) map adapter that allows to bind Views SDK with google maps 
+HyperTrack Android Maps SDK is an implementation for [HyperTrackViews SDK](https://github.com/hypertrack/views-android) map adapter that allows to bind HyperTrackViews SDK with google maps 
 and display tracking and static data in realtime. SDK provided access to functionality that helps with displaying current location, active and completed trips, 
 including any map objects manipulations and customizations. The module exposes methods to add trips, add filter of trip displaying, move map camera to these objects,
 and interact with the map objects.
@@ -134,10 +134,10 @@ The first is just to bind `HyperTrackMap` and `HyperTrackViews` to a specific de
 The second way to work directly with `GoogleMapAdapter` and to manage all updates via adapter interface. 
 For example add trip with `addTrip(trip)`, it will return `MapTrip`, after that you have to update `mapTrip.update(trip)` on trip update event from Views SDK.
 
-## Documentations
+## Documentation
 
 [HyperTrack Tracking Sample](https://github.com/hypertrack/live-app-android)
 
 [HyperTrack Views Sample](https://github.com/hypertrack/views-android)
 
-[Uber-for-X Sample](https://github.com/hypertrack/uber-for-x-android)
+[Ridesharing Sample](https://github.com/hypertrack/ridesharing-android)
