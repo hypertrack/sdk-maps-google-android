@@ -85,14 +85,53 @@ MapTrip mapTrip = mapAdapter.addTrip(trip);
 
 ```
 
+### Styles
+Change the styles of displaying objects on the map in two ways.
+
+in style.xml
+```
+<style name="AppTheme">
+        ...
+
+        <item name="hyperTrackMapStyle">@style/HyperTrackMap</item>
+    </style>
+
+<style name="HyperTrackMap">
+        <item name="myLocationIcon">@drawable/icon_drive_base_transparent</item>
+        <item name="myLocationBearingIcon">@drawable/icondrive</item>
+        <item name="tripDestinationIcon">@drawable/ic_destination_marker</item>
+        <item name="tripRouteColor">@color/black</item>
+        <item name="tripCompletedOriginIcon">@drawable/ic_source_marker</item>
+        <item name="tripCompletedDestinationIcon">@drawable/ic_destination_marker</item>
+        <item name="tripCompletedRouteColor">@color/black</item>
+    </style>
+```
+
+or in code
+```
+GoogleMapConfig.TripOptions tripOptions = GoogleMapConfig.newTripOptions()
+                .tripDestinationMarker(new MarkerOptions()
+                        .anchor(0.5f, 0.5f)
+                        .icon(BitmapDescriptorFactory.fromResource(R.drawable.ic_destination_marker)))
+                .tripPassedRoutePolyline(null)
+                .tripComingRoutePolyline(new PolylineOptions()
+                        .width(mapRouteWidth)
+                        .color(Color.BLACK)
+                        .pattern(Collections.<PatternItem>singletonList(new Dash(mapRouteWidth))));
+GoogleMapConfig mapConfig = GoogleMapConfig.newBuilder(context)
+                .tripOptions(tripOptions).build();
+```
+
 
 ## How it works
 
-You can use cards in two ways.
+You can use Maps in two ways.
+
 The first is just to bind `HyperTrackMap` and `HyperTrackViews` to a specific device. After that, just subscribe a trip `hyperTrackMap.subscribeTrip(tripId)`.
 `HyperTrackMap` will manage all updates and displays .
-The second way to work directly with `GoogleMapAdapter` and to manage independently all updates via adapter interface. 
-For example to add trip with `addTrip(trip)`, it will return `MapTrip`, that you have to update `mapTrip.update(trip)` on trip update event from Views SDK
+
+The second way to work directly with `GoogleMapAdapter` and to manage all updates via adapter interface. 
+For example add trip with `addTrip(trip)`, it will return `MapTrip`, after that you have to update `mapTrip.update(trip)` on trip update event from Views SDK.
 
 ## Documentations
 
