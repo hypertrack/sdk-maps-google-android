@@ -15,5 +15,8 @@
         <attr name="tripCompletedOriginIcon" format="reference" />
         <attr name="tripCompletedDestinationIcon" format="reference" />
         <attr name="tripCompletedRouteColor" format="color" />
+        <attr name="tripCompletedEndIcon" format="reference" />
+        <attr name="placeArriveRadiusColor" format="color" />
+        <attr name="placeArriveRadiusPassedColor" format="color" />
     </declare-styleable>
 </resources>

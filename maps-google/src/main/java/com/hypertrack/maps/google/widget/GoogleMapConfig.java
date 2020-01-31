@@ -3,6 +3,7 @@ package com.hypertrack.maps.google.widget;
 import android.content.Context;
 import android.content.res.Resources;
 import android.content.res.TypedArray;
+import android.graphics.Color;
 import android.util.TypedValue;
 
 import androidx.annotation.NonNull;
@@ -30,6 +31,8 @@ public class GoogleMapConfig {
     MarkerOptions locationMarker;
     MarkerOptions bearingMarker;
     CircleOptions accuracyCircle;
+    CircleOptions arrivePlaceCircle;
+    CircleOptions arrivePlacePassedCircle;
 
     GoogleMapConfig.TripOptions tripOptions;
     GoogleMapConfig.TripOptions tripCompletedOptions;
@@ -67,6 +70,7 @@ public class GoogleMapConfig {
         MarkerOptions tripDestinationMarker;
         PolylineOptions tripPassedRoutePolyline;
         PolylineOptions tripComingRoutePolyline;
+        MarkerOptions tripEndMarker;
 
         private TripOptions(StyleAttrs styleAttrs) {
             if (styleAttrs != null) {
@@ -91,6 +95,10 @@ public class GoogleMapConfig {
                             .width(styleAttrs.tripRouteWidth)
                             .color(styleAttrs.tripRouteColor)
                             .pattern(Collections.singletonList((PatternItem) new Dot()));
+                }
+                if (tripEndMarker == null) {
+                    tripEndMarker = new MarkerOptions()
+                            .icon(BitmapDescriptorFactory.fromResource(styleAttrs.tripEndIcon));
                 }
             }
         }
@@ -139,6 +147,17 @@ public class GoogleMapConfig {
             return this;
         }
 
+        /**
+         * Defines MarkerOptions for a trip end marker. In most cases it's a last location in a trip passed route.
+         *
+         * @param markerOptions a new set of marker options {@link MarkerOptions}.
+         * @return this instance of the class.
+         */
+        public TripOptions tripEndMarker(MarkerOptions markerOptions) {
+            this.tripEndMarker = markerOptions;
+            return this;
+        }
+
         private TripOptions build() {
             return this;
         }
@@ -148,6 +167,7 @@ public class GoogleMapConfig {
             int tripOriginIcon;
             int tripDestinationIcon;
             int tripRouteColor;
+            int tripEndIcon;
         }
     }
 
@@ -186,6 +206,9 @@ public class GoogleMapConfig {
             int myLocationAccuracyColor = r.getColor(R.color.ht_accuracy);
             int myLocationAccuracyStrokeColor = r.getColor(R.color.ht_accuracy_stroke);
 
+            int placeArriveRadiusColor = r.getColor(R.color.ht_place_arrive);
+            int placeArriveRadiusPassedColor = r.getColor(R.color.ht_place_arrive_passed);
+
             tripStyleAttrs.tripRouteWidth = tripRouteWidth;
             tripCompletedStyleAttrs.tripRouteWidth = tripRouteWidth;
             tripStyleAttrs.tripOriginIcon = R.drawable.starting_position;
@@ -194,6 +217,7 @@ public class GoogleMapConfig {
             tripCompletedStyleAttrs.tripOriginIcon = R.drawable.departure_sd_c;
             tripCompletedStyleAttrs.tripDestinationIcon = R.drawable.arrival_sd_c;
             tripCompletedStyleAttrs.tripRouteColor = r.getColor(R.color.ht_route_completed);
+            tripCompletedStyleAttrs.tripEndIcon = R.drawable.destination_red_sd;
 
             TypedValue attrs = new TypedValue();
             context.getTheme().resolveAttribute(R.attr.hyperTrackMapStyle, attrs, true);
@@ -204,12 +228,16 @@ public class GoogleMapConfig {
                 myLocationAccuracyColor = typedArray.getColor(R.styleable.HyperTrackMap_myLocationAccuracyColor, myLocationAccuracyColor);
                 myLocationAccuracyStrokeColor = typedArray.getColor(R.styleable.HyperTrackMap_myLocationAccuracyStrokeColor, myLocationAccuracyStrokeColor);
 
+                placeArriveRadiusColor = typedArray.getColor(R.styleable.HyperTrackMap_placeArriveRadiusColor, placeArriveRadiusColor);
+                placeArriveRadiusPassedColor = typedArray.getColor(R.styleable.HyperTrackMap_placeArriveRadiusPassedColor, placeArriveRadiusPassedColor);
+
                 tripStyleAttrs.tripOriginIcon = typedArray.getResourceId(R.styleable.HyperTrackMap_tripOriginIcon, tripStyleAttrs.tripOriginIcon);
                 tripStyleAttrs.tripDestinationIcon = typedArray.getResourceId(R.styleable.HyperTrackMap_tripDestinationIcon, tripStyleAttrs.tripDestinationIcon);
                 tripStyleAttrs.tripRouteColor = typedArray.getColor(R.styleable.HyperTrackMap_tripRouteColor, tripStyleAttrs.tripRouteColor);
                 tripCompletedStyleAttrs.tripOriginIcon = typedArray.getResourceId(R.styleable.HyperTrackMap_tripCompletedOriginIcon, tripCompletedStyleAttrs.tripOriginIcon);
                 tripCompletedStyleAttrs.tripDestinationIcon = typedArray.getResourceId(R.styleable.HyperTrackMap_tripCompletedDestinationIcon, tripCompletedStyleAttrs.tripDestinationIcon);
                 tripCompletedStyleAttrs.tripRouteColor = typedArray.getColor(R.styleable.HyperTrackMap_tripCompletedRouteColor, tripCompletedStyleAttrs.tripRouteColor);
+                tripCompletedStyleAttrs.tripEndIcon = typedArray.getResourceId(R.styleable.HyperTrackMap_tripCompletedEndIcon, tripCompletedStyleAttrs.tripEndIcon);
                 typedArray.recycle();
             }
 
@@ -224,6 +252,12 @@ public class GoogleMapConfig {
                     .strokeColor(myLocationAccuracyStrokeColor)
                     .strokeWidth(accuracyStrokeWidth);
             config.tripCompletedOptions = new TripOptions(tripCompletedStyleAttrs).build();
+            config.arrivePlaceCircle = new CircleOptions()
+                    .fillColor(placeArriveRadiusColor)
+                    .strokeColor(Color.TRANSPARENT);
+            config.arrivePlacePassedCircle = new CircleOptions()
+                    .fillColor(placeArriveRadiusPassedColor)
+                    .strokeColor(Color.TRANSPARENT);
         }
 
         /**
@@ -282,6 +316,28 @@ public class GoogleMapConfig {
         }
 
         /**
+         * Defines CircleOptions for a destination and a geofence arriving radius.
+         *
+         * @param circleOptions a new set of marker options {@link CircleOptions}.
+         * @return this instance of the class.
+         */
+        public Builder arrivePlaceCircle(CircleOptions circleOptions) {
+            config.arrivePlaceCircle = circleOptions;
+            return this;
+        }
+
+        /**
+         * Defines CircleOptions for a destination and a geofence arriving radius after it's passed.
+         *
+         * @param circleOptions a new set of marker options {@link CircleOptions}.
+         * @return this instance of the class.
+         */
+        public Builder arrivePlacePassedCircle(CircleOptions circleOptions) {
+            config.arrivePlacePassedCircle = circleOptions;
+            return this;
+        }
+
+        /**
          * Setup visibility of passed routes.
          *
          * @param isVisible true if should be shown, false otherwise.
@@ -295,7 +351,7 @@ public class GoogleMapConfig {
         /**
          * Setup bounding box of specified dimensions.
          *
-         * @param width bounding box width in pixels (px)
+         * @param width  bounding box width in pixels (px)
          * @param height bounding box height in pixels (px)
          * @return this instance of the class.
          */

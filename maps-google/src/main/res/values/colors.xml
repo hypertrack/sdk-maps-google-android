@@ -4,4 +4,6 @@
     <color name="ht_accuracy_stroke">#8000ce5b</color>
     <color name="ht_route">#00ce5b</color>
     <color name="ht_route_completed">#6f4cff</color>
+    <color name="ht_place_arrive">#1800ce5b</color>
+    <color name="ht_place_arrive_passed">#3d4c4b5d</color>
 </resources>

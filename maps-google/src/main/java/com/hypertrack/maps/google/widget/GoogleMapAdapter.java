@@ -12,6 +12,7 @@ import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.Circle;
+import com.google.android.gms.maps.model.CircleOptions;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.LatLngBounds;
 import com.google.android.gms.maps.model.Marker;
@@ -28,6 +29,7 @@ import com.hypertrack.sdk.views.maps.widget.MapAdapter;
 
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -286,7 +288,9 @@ public class GoogleMapAdapter extends MapAdapter {
                         builder.include(new LatLng(mapLocation.location.getLatitude(), mapLocation.location.getLongitude()));
                     } else if (mapObject.getType() == HyperTrackMap.TRIP_MAP_OBJECT_TYPE) {
                         GMapTrip gMapTrip = (GMapTrip) mapObject;
-                        builder.include(gMapTrip.destination);
+                        if (gMapTrip.destination != null) {
+                            builder.include(gMapTrip.destination);
+                        }
                         if (!gMapTrip.estimateRoute.isEmpty()) {
                             for (LatLng latLng : gMapTrip.estimateRoute) {
                                 builder.include(latLng);
@@ -457,14 +461,18 @@ public class GoogleMapAdapter extends MapAdapter {
         private GoogleMapConfig mConfig;
 
         private LatLng destination;
+        private int destinationRadius;
+        private Date destinationArrivedDate;
         private List<LatLng> summaryRoute = new ArrayList<>();
         private List<LatLng> estimateRoute = new ArrayList<>();
         private LatLng myPosition;
 
         Marker originMarker;
         Marker destinationMarker;
+        Marker endMarker;
         Polyline routePassedPolyline;
         Polyline routeCommingPolyline;
+        Circle destinationCircle;
 
         /**
          * Marker of origin location in the trip.
@@ -482,6 +490,15 @@ public class GoogleMapAdapter extends MapAdapter {
          */
         public Marker getDestinationMarker() {
             return destinationMarker;
+        }
+
+        /**
+         * Marker of the trip end location.
+         *
+         * @return {@link Marker} that corresponds to the trip end location on the map.
+         */
+        public Marker getEndMarker() {
+            return endMarker;
         }
 
         private GMapTrip(@NonNull Trip trip) {
@@ -507,8 +524,11 @@ public class GoogleMapAdapter extends MapAdapter {
             if (trip.getDestination() == null ||
                     trip.getDestination().getLatitude() == null || trip.getDestination().getLongitude() == null) {
                 destination = null;
+                destinationRadius = 0;
             } else {
                 destination = new LatLng(trip.getDestination().getLatitude(), trip.getDestination().getLongitude());
+                destinationRadius = trip.getDestination().radius;
+                destinationArrivedDate = trip.getDestination().getArrivedDate();
             }
         }
 
@@ -517,9 +537,11 @@ public class GoogleMapAdapter extends MapAdapter {
             mConfig = mapAdapter.mConfig;
 
             if (!isAdded) {
-                GoogleMapConfig.TripOptions options = trip.getStatus().equals("completed") ?
-                        mConfig.tripCompletedOptions
-                        : mConfig.tripOptions;
+
+                boolean isActive = !trip.getStatus().equals("completed");
+                GoogleMapConfig.TripOptions options = isActive ?
+                        mConfig.tripOptions
+                        : mConfig.tripCompletedOptions;
 
                 if (options.tripPassedRoutePolyline != null) {
                     routePassedPolyline = mapAdapter.mGoogleMap.get().addPolyline(options.tripPassedRoutePolyline);
@@ -529,17 +551,32 @@ public class GoogleMapAdapter extends MapAdapter {
                 if (destination != null) {
                     destinationMarker = mapAdapter.mGoogleMap.get().addMarker(
                             options.tripDestinationMarker
-                                    .anchor(0.5f, 0.5f)
                                     .position(destination)
                     );
+                    if (isActive) {
+                        CircleOptions circleOptions = destinationArrivedDate == null ?
+                                mConfig.arrivePlaceCircle : mConfig.arrivePlacePassedCircle;
+                        destinationCircle = mapAdapter.mGoogleMap.get().addCircle(
+                                circleOptions
+                                        .center(destination)
+                                        .radius(destinationRadius)
+                        );
+                    }
                 }
                 if (routePassedPolyline != null && (mConfig.isPassedRouteVisible || trip.getStatus().equals("completed"))) {
-                    if (options.tripOriginMarker != null && !summaryRoute.isEmpty()) {
-                        originMarker = mapAdapter.mGoogleMap.get().addMarker(
-                                options.tripOriginMarker
-                                        .anchor(0.5f, 0.5f)
-                                        .position(summaryRoute.get(0))
-                        );
+                    if (!summaryRoute.isEmpty()) {
+                        if (options.tripOriginMarker != null) {
+                            originMarker = mapAdapter.mGoogleMap.get().addMarker(
+                                    options.tripOriginMarker
+                                            .position(summaryRoute.get(0))
+                            );
+                        }
+                        if (options.tripEndMarker != null) {
+                            endMarker = mapAdapter.mGoogleMap.get().addMarker(
+                                    options.tripEndMarker
+                                            .position(summaryRoute.get(summaryRoute.size() - 1))
+                            );
+                        }
                     }
                     routePassedPolyline.setPoints(summaryRoute);
                 }
@@ -569,11 +606,12 @@ public class GoogleMapAdapter extends MapAdapter {
 
             if (isAdded) {
 
-                if (isStatusChanged) {
+                boolean isActive = !trip.getStatus().equals("completed");
 
-                    GoogleMapConfig.TripOptions options = trip.getStatus().equals("completed") ?
-                            mConfig.tripCompletedOptions
-                            : mConfig.tripOptions;
+                if (isStatusChanged) {
+                    GoogleMapConfig.TripOptions options = isActive ?
+                            mConfig.tripOptions
+                            : mConfig.tripCompletedOptions;
                     if (destinationMarker != null) {
                         destinationMarker.setIcon(options.tripDestinationMarker.getIcon());
                     }
@@ -592,10 +630,28 @@ public class GoogleMapAdapter extends MapAdapter {
 
                 if (destinationMarker != null && destination != null) {
                     destinationMarker.setPosition(destination);
+                    if (isActive) {
+                        CircleOptions circleOptions = destinationArrivedDate == null ?
+                                mConfig.arrivePlaceCircle : mConfig.arrivePlacePassedCircle;
+                        destinationCircle.setFillColor(circleOptions.getFillColor());
+                        destinationCircle.setStrokeColor(circleOptions.getStrokeColor());
+                        destinationCircle.setStrokeWidth(circleOptions.getStrokeWidth());
+                        destinationCircle.setCenter(destination);
+                        destinationCircle.setRadius(destinationRadius);
+                    } else {
+                        if (destinationCircle != null) {
+                            destinationCircle.remove();
+                        }
+                    }
                 }
                 if (routePassedPolyline != null && (mConfig.isPassedRouteVisible || trip.getStatus().equals("completed"))) {
-                    if (originMarker != null && !summaryRoute.isEmpty()) {
-                        originMarker.setPosition(summaryRoute.get(0));
+                    if (!summaryRoute.isEmpty()) {
+                        if (originMarker != null) {
+                            originMarker.setPosition(summaryRoute.get(0));
+                        }
+                        if (endMarker != null) {
+                            endMarker.setPosition(summaryRoute.get(summaryRoute.size() - 1));
+                        }
                     }
                     routePassedPolyline.setPoints(summaryRoute);
                 } else if (routeCommingPolyline != null) {
