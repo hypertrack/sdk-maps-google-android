@@ -645,6 +645,7 @@ public class GoogleMapAdapter extends MapAdapter {
                     }
                 }
                 if (routePassedPolyline != null && (mConfig.isPassedRouteVisible || trip.getStatus().equals("completed"))) {
+                    List<LatLng> points = new ArrayList<>();
                     if (!summaryRoute.isEmpty()) {
                         if (originMarker != null) {
                             originMarker.setPosition(summaryRoute.get(0));
@@ -652,8 +653,12 @@ public class GoogleMapAdapter extends MapAdapter {
                         if (endMarker != null) {
                             endMarker.setPosition(summaryRoute.get(summaryRoute.size() - 1));
                         }
+                        points.addAll(summaryRoute);
+                        if (myPosition != null) {
+                            points.add(myPosition);
+                        }
                     }
-                    routePassedPolyline.setPoints(summaryRoute);
+                    routePassedPolyline.setPoints(points);
                 } else if (routeCommingPolyline != null) {
                     List<LatLng> points = new ArrayList<>();
                     if (!estimateRoute.isEmpty()) {
