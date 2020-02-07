@@ -37,6 +37,7 @@ public class GoogleMapConfig {
     GoogleMapConfig.TripOptions tripOptions;
     GoogleMapConfig.TripOptions tripCompletedOptions;
 
+    float maxZoomPreference;
     int mapBoundingBoxPadding;
     int boundingBoxWidth = -1;
     int boundingBoxHeight = -1;
@@ -379,6 +380,7 @@ public class GoogleMapConfig {
             if (config.tripCompletedOptions == null) {
                 config.tripCompletedOptions = config.tripOptions;
             }
+            config.maxZoomPreference = 18;
 
             return config;
         }

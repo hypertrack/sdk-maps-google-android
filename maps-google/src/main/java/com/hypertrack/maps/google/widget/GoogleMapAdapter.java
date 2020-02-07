@@ -93,6 +93,9 @@ public class GoogleMapAdapter extends MapAdapter {
     public GoogleMapAdapter(@NonNull GoogleMap googleMap, @NonNull GoogleMapConfig config) {
         mGoogleMap = new WeakReference<>(googleMap);
         mConfig = config;
+        if (googleMap.getMaxZoomLevel() == 21f) {
+            googleMap.setMaxZoomPreference(config.maxZoomPreference);
+        }
     }
 
     /**
@@ -266,8 +269,6 @@ public class GoogleMapAdapter extends MapAdapter {
                     Log.d(TAG, "remapTrips trip - " + mapTrip.trip.getTripId() + " : " + tripFilter.apply(mapTrip.trip));
                     if (!tripFilter.apply(mapTrip.trip)) {
                         mapTrip.remove();
-                    } else if (!mapTrip.isAdded()) {
-                        mapTrip.addTo(this);
                     } else {
                         mapTrip.update(mapTrip.trip);
                     }
@@ -699,6 +700,10 @@ public class GoogleMapAdapter extends MapAdapter {
                 destinationMarker.remove();
                 destinationMarker = null;
             }
+            if (endMarker != null) {
+                endMarker.remove();
+                endMarker = null;
+            }
             if (routePassedPolyline != null) {
                 routePassedPolyline.remove();
                 routePassedPolyline = null;
@@ -706,6 +711,10 @@ public class GoogleMapAdapter extends MapAdapter {
             if (routeCommingPolyline != null) {
                 routeCommingPolyline.remove();
                 routeCommingPolyline = null;
+            }
+            if (destinationCircle != null) {
+                destinationCircle.remove();
+                destinationCircle = null;
             }
         }
     }
