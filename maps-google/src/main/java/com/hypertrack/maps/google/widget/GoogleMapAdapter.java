@@ -581,7 +581,7 @@ public class GoogleMapAdapter extends MapAdapter {
                     }
                     routePassedPolyline.setPoints(summaryRoute);
                 }
-                if (!estimateRoute.isEmpty() && routeCommingPolyline != null) {
+                if (!estimateRoute.isEmpty()) {
                     routeCommingPolyline.setPoints(estimateRoute);
                 }
 
@@ -660,7 +660,8 @@ public class GoogleMapAdapter extends MapAdapter {
                         }
                     }
                     routePassedPolyline.setPoints(points);
-                } else if (routeCommingPolyline != null) {
+                }
+                if (routeCommingPolyline != null) {
                     List<LatLng> points = new ArrayList<>();
                     if (!estimateRoute.isEmpty()) {
                         if (myPosition == null) {
