@@ -572,7 +572,7 @@ public class GoogleMapAdapter extends MapAdapter {
                                             .position(summaryRoute.get(0))
                             );
                         }
-                        if (options.tripEndMarker != null) {
+                        if (trip.getStatus().equals("completed") && options.tripEndMarker != null) {
                             endMarker = mapAdapter.mGoogleMap.get().addMarker(
                                     options.tripEndMarker
                                             .position(summaryRoute.get(summaryRoute.size() - 1))

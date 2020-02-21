@@ -211,10 +211,10 @@ public class GoogleMapConfig {
             int placeArriveRadiusPassedColor = r.getColor(R.color.ht_place_arrive_passed);
 
             tripStyleAttrs.tripRouteWidth = tripRouteWidth;
-            tripCompletedStyleAttrs.tripRouteWidth = tripRouteWidth;
             tripStyleAttrs.tripOriginIcon = R.drawable.starting_position;
             tripStyleAttrs.tripDestinationIcon = R.drawable.destination;
             tripStyleAttrs.tripRouteColor = r.getColor(R.color.ht_route);
+            tripCompletedStyleAttrs.tripRouteWidth = tripRouteWidth;
             tripCompletedStyleAttrs.tripOriginIcon = R.drawable.departure_sd_c;
             tripCompletedStyleAttrs.tripDestinationIcon = R.drawable.arrival_sd_c;
             tripCompletedStyleAttrs.tripRouteColor = r.getColor(R.color.ht_route_completed);
