@@ -75,32 +75,22 @@ public class GoogleMapConfig {
 
         private TripOptions(StyleAttrs styleAttrs) {
             if (styleAttrs != null) {
-                if (tripOriginMarker == null) {
-                    tripOriginMarker = new MarkerOptions()
-                            .anchor(0.5f, 0.5f)
-                            .icon(BitmapDescriptorFactory.fromResource(styleAttrs.tripOriginIcon));
-                }
-                if (tripDestinationMarker == null) {
-                    tripDestinationMarker = new MarkerOptions()
-                            .anchor(0.5f, 0.5f)
-                            .icon(BitmapDescriptorFactory.fromResource(styleAttrs.tripDestinationIcon));
-                }
-                if (tripPassedRoutePolyline == null) {
-                    tripPassedRoutePolyline = new PolylineOptions()
-                            .width(styleAttrs.tripRouteWidth)
-                            .color(styleAttrs.tripRouteColor)
-                            .pattern(Collections.singletonList((PatternItem) new Dash(styleAttrs.tripRouteWidth)));
-                }
-                if (tripComingRoutePolyline == null) {
-                    tripComingRoutePolyline = new PolylineOptions()
-                            .width(styleAttrs.tripRouteWidth)
-                            .color(styleAttrs.tripRouteColor)
-                            .pattern(Collections.singletonList((PatternItem) new Dot()));
-                }
-                if (tripEndMarker == null) {
-                    tripEndMarker = new MarkerOptions()
-                            .icon(BitmapDescriptorFactory.fromResource(styleAttrs.tripEndIcon));
-                }
+                tripOriginMarker = new MarkerOptions()
+                        .anchor(0.5f, 0.5f)
+                        .icon(BitmapDescriptorFactory.fromResource(styleAttrs.tripOriginIcon));
+                tripDestinationMarker = new MarkerOptions()
+                        .anchor(0.5f, 0.5f)
+                        .icon(BitmapDescriptorFactory.fromResource(styleAttrs.tripDestinationIcon));
+                tripPassedRoutePolyline = new PolylineOptions()
+                        .width(styleAttrs.tripRouteWidth)
+                        .color(styleAttrs.tripRouteColor)
+                        .pattern(Collections.singletonList((PatternItem) new Dash(styleAttrs.tripRouteWidth)));
+                tripComingRoutePolyline = new PolylineOptions()
+                        .width(styleAttrs.tripRouteWidth)
+                        .color(styleAttrs.tripRouteColor)
+                        .pattern(Collections.singletonList((PatternItem) new Dot()));
+                tripEndMarker = new MarkerOptions()
+                        .icon(BitmapDescriptorFactory.fromResource(styleAttrs.tripEndIcon));
             }
         }
 
@@ -252,7 +242,6 @@ public class GoogleMapConfig {
                     .fillColor(myLocationAccuracyColor)
                     .strokeColor(myLocationAccuracyStrokeColor)
                     .strokeWidth(accuracyStrokeWidth);
-            config.tripCompletedOptions = new TripOptions(tripCompletedStyleAttrs).build();
             config.arrivePlaceCircle = new CircleOptions()
                     .fillColor(placeArriveRadiusColor)
                     .strokeColor(Color.TRANSPARENT);
@@ -378,7 +367,7 @@ public class GoogleMapConfig {
                 config.tripOptions = new TripOptions(tripStyleAttrs).build();
             }
             if (config.tripCompletedOptions == null) {
-                config.tripCompletedOptions = config.tripOptions;
+                config.tripCompletedOptions = new TripOptions(tripCompletedStyleAttrs).build();
             }
             config.maxZoomPreference = 18;
 
