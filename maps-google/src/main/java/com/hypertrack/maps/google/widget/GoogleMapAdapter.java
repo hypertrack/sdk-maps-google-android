@@ -47,7 +47,7 @@ public class GoogleMapAdapter extends MapAdapter {
 
     private static final String MY_LOCATION_KEY = "htgm:my_location";
 
-    private WeakReference<GoogleMap> mGoogleMap;
+    private GoogleMap mGoogleMap;
     private GoogleMapConfig mConfig;
 
     private Location currentLocation;
@@ -92,7 +92,7 @@ public class GoogleMapAdapter extends MapAdapter {
      * @param config    that needed to setup GoogleMapAdapter.
      */
     public GoogleMapAdapter(@NonNull GoogleMap googleMap, @NonNull GoogleMapConfig config) {
-        mGoogleMap = new WeakReference<>(googleMap);
+        mGoogleMap = googleMap;
         mConfig = config;
         if (googleMap.getMaxZoomLevel() == 21f) {
             googleMap.setMaxZoomPreference(config.maxZoomPreference);
@@ -122,6 +122,8 @@ public class GoogleMapAdapter extends MapAdapter {
         isCameraFixed = enabled;
         if (enabled) {
             updateCamera();
+        } else {
+            currentTrip = null;
         }
     }
 
@@ -135,7 +137,7 @@ public class GoogleMapAdapter extends MapAdapter {
                     new LatLng(latLng.latitude, latLng.longitude),
                     14
             );
-            mGoogleMap.get().animateCamera(cameraUpdate, 1000, null);
+            mGoogleMap.animateCamera(cameraUpdate, 1000, null);
         }
     }
 
@@ -166,12 +168,12 @@ public class GoogleMapAdapter extends MapAdapter {
             }
 
             if (mConfig.boundingBoxWidth == -1 && mConfig.boundingBoxHeight == -1) {
-                mGoogleMap.get().animateCamera(
+                mGoogleMap.animateCamera(
                         CameraUpdateFactory.newLatLngBounds(builder.build(), mConfig.mapBoundingBoxPadding),
                         1000,
                         null);
             } else {
-                mGoogleMap.get().animateCamera(
+                mGoogleMap.animateCamera(
                         CameraUpdateFactory.newLatLngBounds(builder.build(),
                                 mConfig.boundingBoxWidth, mConfig.boundingBoxHeight,
                                 mConfig.mapBoundingBoxPadding),
@@ -289,7 +291,7 @@ public class GoogleMapAdapter extends MapAdapter {
             final LatLngBounds.Builder builder = new LatLngBounds.Builder();
             if (currentTrip == null) {
                 for (MapObject mapObject : gMapObjects.values()) {
-                    if (mapObject.getType() == HyperTrackMap.TRIP_MAP_OBJECT_TYPE) {
+                    if (mapObject.isAdded() && mapObject.getType() == HyperTrackMap.TRIP_MAP_OBJECT_TYPE) {
                         currentTrip = ((MapTrip) mapObject).trip;
                         break;
                     }
@@ -354,7 +356,7 @@ public class GoogleMapAdapter extends MapAdapter {
         }
 
         private void addTo(@NonNull GoogleMapAdapter mapAdapter) {
-            googleMap = mapAdapter.mGoogleMap;
+            googleMap = new WeakReference<>(mapAdapter.mGoogleMap);
 
             LatLng center = new LatLng(location.getLatitude(), location.getLongitude());
             final float radius = location.getAccuracy()
@@ -362,19 +364,19 @@ public class GoogleMapAdapter extends MapAdapter {
                     googleMap.get().getCameraPosition().zoom);
 
             if (mapAdapter.mConfig.accuracyCircle != null) {
-                accuracyCircle = mapAdapter.mGoogleMap.get().addCircle(mapAdapter.mConfig.accuracyCircle
+                accuracyCircle = googleMap.get().addCircle(mapAdapter.mConfig.accuracyCircle
                         .center(center)
                         .radius(radius)
                 );
             }
 
-            locationMarker = mapAdapter.mGoogleMap.get().addMarker(mapAdapter.mConfig.locationMarker
+            locationMarker = googleMap.get().addMarker(mapAdapter.mConfig.locationMarker
                     .anchor(0.5f, 0.5f)
                     .position(center)
             );
 
             if (mapAdapter.mConfig.bearingMarker != null) {
-                bearingMarker = mapAdapter.mGoogleMap.get().addMarker(mapAdapter.mConfig.bearingMarker
+                bearingMarker = googleMap.get().addMarker(mapAdapter.mConfig.bearingMarker
                         .anchor(0.5f, 0.5f)
                         .flat(true)
                         .position(center)
@@ -432,7 +434,9 @@ public class GoogleMapAdapter extends MapAdapter {
                 bearingMarker.remove();
                 bearingMarker = null;
             }
-            googleMap = null;
+            if (googleMap != null) {
+                googleMap = null;
+            }
             isAdded = false;
         }
     }
@@ -529,19 +533,19 @@ public class GoogleMapAdapter extends MapAdapter {
                         : mConfig.tripCompletedOptions;
 
                 if (options.tripPassedRoutePolyline != null) {
-                    routePassedPolyline = mapAdapter.mGoogleMap.get().addPolyline(options.tripPassedRoutePolyline);
+                    routePassedPolyline = mapAdapter.mGoogleMap.addPolyline(options.tripPassedRoutePolyline);
                 }
-                routeCommingPolyline = mapAdapter.mGoogleMap.get().addPolyline(options.tripComingRoutePolyline);
+                routeCommingPolyline = mapAdapter.mGoogleMap.addPolyline(options.tripComingRoutePolyline);
 
                 if (destination != null) {
-                    destinationMarker = mapAdapter.mGoogleMap.get().addMarker(
+                    destinationMarker = mapAdapter.mGoogleMap.addMarker(
                             options.tripDestinationMarker
                                     .position(destination)
                     );
                     if (isActive) {
                         CircleOptions circleOptions = destinationArrivedDate == null ?
                                 mConfig.arrivePlaceCircle : mConfig.arrivePlacePassedCircle;
-                        destinationCircle = mapAdapter.mGoogleMap.get().addCircle(
+                        destinationCircle = mapAdapter.mGoogleMap.addCircle(
                                 circleOptions
                                         .center(destination)
                                         .radius(destinationRadius)
@@ -554,14 +558,14 @@ public class GoogleMapAdapter extends MapAdapter {
                     if (!summaryRoute.isEmpty()) {
                         originLatLng = summaryRoute.get(0);
                         if (trip.getStatus().equals("completed") && options.tripEndMarker != null) {
-                            endMarker = mapAdapter.mGoogleMap.get().addMarker(
+                            endMarker = mapAdapter.mGoogleMap.addMarker(
                                     options.tripEndMarker
                                             .position(summaryRoute.get(summaryRoute.size() - 1))
                             );
                         }
                     }
                     if (originLatLng != null) {
-                        originMarker = mapAdapter.mGoogleMap.get().addMarker(
+                        originMarker = mapAdapter.mGoogleMap.addMarker(
                                 options.tripOriginMarker
                                         .position(originLatLng)
                         );
