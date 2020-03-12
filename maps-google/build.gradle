@@ -6,42 +6,24 @@ ext {
     extVersionNumber = computeVersionNumber()
     extVersionName = (isSnapshot.toBoolean() ? version + "-SNAPSHOT" : version)
     println "Core SDK version is " + extVersionName
-
-    if (rootProject.hasProperty('library_play_service_version')) {
-        library_play_service_version = rootProject.library_play_service_version
-    } else {
-        library_play_service_version = '17.0.0'
-    }
-
-    if (rootProject.hasProperty('library_compile_sdk_version')) {
-        library_compile_sdk_version = rootProject.library_compile_sdk_version
-    } else {
-        library_compile_sdk_version = 29
-    }
-
-    if (rootProject.hasProperty('library_target_sdk_version')) {
-        library_target_sdk_version = rootProject.library_target_sdk_version
-    } else {
-        library_target_sdk_version = 29
-    }
-
 }
 
 android {
-    compileSdkVersion library_compile_sdk_version
-    buildToolsVersion "29.0.2"
+    compileSdkVersion 29
+
     defaultConfig {
         minSdkVersion 19
-        targetSdkVersion library_target_sdk_version
         versionCode extVersionNumber
         versionName extVersionName
-        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
     buildTypes {
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
+    }
+    lintOptions {
+        abortOnError false
     }
 }
 
@@ -55,14 +37,11 @@ repositories {
 
 dependencies {
     implementation fileTree(dir: 'libs', include: ['*.jar'])
-    implementation 'androidx.appcompat:appcompat:1.1.0'
-    implementation "com.google.android.gms:play-services-maps:$library_play_service_version"
+    implementation 'com.google.android.gms:play-services-maps:16.0.0'
 
-    implementation 'com.hypertrack:hypertrack-views:0.8.2'
+    implementation 'com.hypertrack:hypertrack-views:0.8.5'
 
     testImplementation 'junit:junit:4.12'
-    androidTestImplementation 'androidx.test:runner:1.2.0'
-    androidTestImplementation 'androidx.test.espresso:espresso-core:3.2.0'
 }
 
 def computeVersionNumber() {
