@@ -148,36 +148,42 @@ public class GoogleMapAdapter extends MapAdapter {
         if (mGoogleMap != null) {
 
             currentTrip = trip;
-            final LatLngBounds.Builder builder = new LatLngBounds.Builder();
+            List<LatLng> latLngs = new ArrayList<>();
             if (currentLocation != null) {
-                builder.include(new LatLng(currentLocation.getLatitude(), currentLocation.getLongitude()));
+                latLngs.add(new LatLng(currentLocation.getLatitude(), currentLocation.getLongitude()));
             }
             if (trip.getDestination() != null) {
-                builder.include(new LatLng(trip.getDestination().getLatitude(), trip.getDestination().getLongitude()));
+                latLngs.add(new LatLng(trip.getDestination().getLatitude(), trip.getDestination().getLongitude()));
             }
             if (trip.getSummary() != null) {
                 for (com.hypertrack.sdk.views.dao.Location location : trip.getSummary().getLocations()) {
-                    builder.include(new LatLng(location.getLatitude(), location.getLongitude()));
+                    latLngs.add(new LatLng(location.getLatitude(), location.getLongitude()));
                 }
             }
             if (trip.getEstimate() != null && trip.getEstimate().getRoute() != null) {
                 for (Trip.Point2D point2D : trip.getEstimate().getRoute().getPoints()) {
-                    builder.include(new LatLng(point2D.getLatitude(), point2D.getLongitude()));
+                    latLngs.add(new LatLng(point2D.getLatitude(), point2D.getLongitude()));
                 }
             }
 
-            if (mConfig.boundingBoxWidth == -1 && mConfig.boundingBoxHeight == -1) {
-                mGoogleMap.animateCamera(
-                        CameraUpdateFactory.newLatLngBounds(builder.build(), mConfig.mapBoundingBoxPadding),
-                        1000,
-                        null);
-            } else {
-                mGoogleMap.animateCamera(
-                        CameraUpdateFactory.newLatLngBounds(builder.build(),
-                                mConfig.boundingBoxWidth, mConfig.boundingBoxHeight,
-                                mConfig.mapBoundingBoxPadding),
-                        1000,
-                        null);
+            if (!latLngs.isEmpty()) {
+                final LatLngBounds.Builder builder = LatLngBounds.builder();
+                for (LatLng latLng : latLngs) {
+                    builder.include(latLng);
+                }
+                if (mConfig.boundingBoxWidth == -1 && mConfig.boundingBoxHeight == -1) {
+                    mGoogleMap.animateCamera(
+                            CameraUpdateFactory.newLatLngBounds(builder.build(), mConfig.mapBoundingBoxPadding),
+                            1000,
+                            null);
+                } else {
+                    mGoogleMap.animateCamera(
+                            CameraUpdateFactory.newLatLngBounds(builder.build(),
+                                    mConfig.boundingBoxWidth, mConfig.boundingBoxHeight,
+                                    mConfig.mapBoundingBoxPadding),
+                            1000,
+                            null);
+                }
             }
         }
     }
@@ -188,6 +194,14 @@ public class GoogleMapAdapter extends MapAdapter {
     @Override
     public void addTripFilter(Predicate<Trip> filter) {
         tripFilter.add(filter);
+        remapTrips();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    public void removeTripFilter(Predicate<Trip> filter) {
+        tripFilter.remove(filter);
         remapTrips();
     }
 
@@ -283,22 +297,30 @@ public class GoogleMapAdapter extends MapAdapter {
         updateCamera();
     }
 
-    private void updateCamera() {
-        if (mGoogleMap != null && isCameraFixed
-                && (currentTrip != null || !gMapObjects.isEmpty())) {
-
-            final LatLngBounds.Builder builder = new LatLngBounds.Builder();
-            if (currentTrip == null) {
-                for (MapObject mapObject : gMapObjects.values()) {
-                    if (mapObject.isAdded() && mapObject.getType() == HyperTrackMap.TRIP_MAP_OBJECT_TYPE) {
-                        currentTrip = ((MapTrip) mapObject).trip;
+    private Trip findTrackedTrip() {
+        Trip trackedTrip = null;
+        if (currentTrip != null) {
+            trackedTrip = currentTrip;
+        } else {
+            for (MapObject mapObject : gMapObjects.values()) {
+                if (mapObject.getType() == HyperTrackMap.TRIP_MAP_OBJECT_TYPE) {
+                    GMapTrip mapTrip = (GMapTrip) mapObject;
+                    if (mapTrip.isAdded() && tripFilter.apply(mapTrip.trip)) {
+                        trackedTrip = ((MapTrip) mapObject).trip;
                         break;
                     }
                 }
             }
-            if (currentTrip != null) {
-                moveToTrip(currentTrip);
-            } else {
+        }
+        return trackedTrip;
+    }
+
+    private void updateCamera() {
+        if (isCameraFixed) {
+            Trip trackedTrip = findTrackedTrip();
+            if (trackedTrip != null) {
+                moveToTrip(trackedTrip);
+            } else if (currentLocation != null) {
                 moveToLocation(new HTLatLng(currentLocation.getLatitude(), currentLocation.getLongitude()));
             }
         }
@@ -315,7 +337,6 @@ public class GoogleMapAdapter extends MapAdapter {
         gMapObjects.clear();
 
         if (mGoogleMap != null) {
-            mGoogleMap.clear();
             mGoogleMap = null;
         }
     }
@@ -366,12 +387,14 @@ public class GoogleMapAdapter extends MapAdapter {
                 accuracyCircle = googleMap.get().addCircle(mapAdapter.mConfig.accuracyCircle
                         .center(center)
                         .radius(radius)
+                        .zIndex(Float.MAX_VALUE)
                 );
             }
 
             locationMarker = googleMap.get().addMarker(mapAdapter.mConfig.locationMarker
                     .anchor(0.5f, 0.5f)
                     .position(center)
+                    .zIndex(Float.MAX_VALUE)
             );
 
             if (mapAdapter.mConfig.bearingMarker != null) {
@@ -380,6 +403,7 @@ public class GoogleMapAdapter extends MapAdapter {
                         .flat(true)
                         .position(center)
                         .rotation(location.getBearing())
+                        .zIndex(Float.MAX_VALUE)
                 );
             }
             isAdded = true;
@@ -552,6 +576,12 @@ public class GoogleMapAdapter extends MapAdapter {
                     }
                 }
                 if (routePassedPolyline != null && (mConfig.isPassedRouteVisible || trip.getStatus().equals("completed"))) {
+                    originMarker = mapAdapter.mGoogleMap.addMarker(
+                            options.tripOriginMarker
+                                    .position(new LatLng(0, 0))
+                                    .visible(false)
+                    );
+
                     LatLng originLatLng = myPosition;
                     routePassedPolyline.setPoints(summaryRoute);
                     if (!summaryRoute.isEmpty()) {
@@ -562,12 +592,12 @@ public class GoogleMapAdapter extends MapAdapter {
                                             .position(summaryRoute.get(summaryRoute.size() - 1))
                             );
                         }
+                    } else if (!estimateRoute.isEmpty()) {
+                        originLatLng = estimateRoute.get(0);
                     }
                     if (originLatLng != null) {
-                        originMarker = mapAdapter.mGoogleMap.addMarker(
-                                options.tripOriginMarker
-                                        .position(originLatLng)
-                        );
+                        originMarker.setPosition(originLatLng);
+                        originMarker.setVisible(true);
                     }
                 }
                 routeCommingPolyline.setPoints(estimateRoute);
@@ -647,6 +677,11 @@ public class GoogleMapAdapter extends MapAdapter {
                         points.addAll(summaryRoute);
                         if (myPosition != null) {
                             points.add(myPosition);
+                        }
+                    } else if (!estimateRoute.isEmpty()) {
+                        if (originMarker != null) {
+                            originMarker.setPosition(estimateRoute.get(0));
+                            originMarker.setVisible(true);
                         }
                     }
                     routePassedPolyline.setPoints(points);

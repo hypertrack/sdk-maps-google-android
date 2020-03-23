@@ -11,6 +11,7 @@ import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.CircleOptions;
 import com.google.android.gms.maps.model.Dash;
 import com.google.android.gms.maps.model.Dot;
+import com.google.android.gms.maps.model.Gap;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.maps.model.PatternItem;
 import com.google.android.gms.maps.model.PolylineOptions;
@@ -18,6 +19,7 @@ import com.hypertrack.maps.google.R;
 import com.hypertrack.maps.google.utils.TileSystem;
 import com.hypertrack.sdk.views.maps.models.MapTrip;
 
+import java.util.Arrays;
 import java.util.Collections;
 
 /**
@@ -87,7 +89,9 @@ public class GoogleMapConfig {
                 tripComingRoutePolyline = new PolylineOptions()
                         .width(styleAttrs.tripRouteWidth)
                         .color(styleAttrs.tripRouteColor)
-                        .pattern(Collections.singletonList((PatternItem) new Dot()));
+                        .pattern(Arrays.asList(
+                                new Dash(styleAttrs.tripRouteWidth * 2),
+                                new Gap(styleAttrs.tripRouteWidth)));
                 tripEndMarker = new MarkerOptions()
                         .icon(BitmapDescriptorFactory.fromResource(styleAttrs.tripEndIcon));
             }
@@ -184,7 +188,7 @@ public class GoogleMapConfig {
             config.mapBoundingBoxPadding = (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 16,
                     r.getDisplayMetrics()
             );
-            float tripRouteWidth = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 4,
+            float tripRouteWidth = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 3,
                     r.getDisplayMetrics()
             );
             float accuracyStrokeWidth = TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, 1,
