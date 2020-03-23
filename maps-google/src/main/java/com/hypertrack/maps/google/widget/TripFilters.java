@@ -13,6 +13,10 @@ class TripFilters {
         filters.add(predicate);
     }
 
+    void remove(Predicate<Trip> predicate) {
+        filters.remove(predicate);
+    }
+
     boolean apply(Trip trip) {
         for (Predicate<Trip> filter : filters) if (!filter.apply(trip)) return false;
 
