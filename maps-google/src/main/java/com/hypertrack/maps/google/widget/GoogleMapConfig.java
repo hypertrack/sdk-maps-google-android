@@ -196,7 +196,7 @@ public class GoogleMapConfig {
             );
 
             myLocationIcon = R.drawable.marker;
-            int myLocationBearingIcon = 0;
+            int myLocationBearingIcon = R.drawable.bearing_arrow_green;
             int myLocationAccuracyColor = r.getColor(R.color.ht_accuracy);
             int myLocationAccuracyStrokeColor = r.getColor(R.color.ht_accuracy_stroke);
 

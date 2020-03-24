@@ -431,7 +431,12 @@ public class GoogleMapAdapter extends MapAdapter {
                 }
                 if (bearingMarker != null) {
                     bearingMarker.setPosition(center);
-                    bearingMarker.setRotation(location.getBearing());
+                    if (location.getBearing() == 0f) {
+                        bearingMarker.setVisible(false);
+                    } else {
+                        bearingMarker.setRotation(location.getBearing());
+                        bearingMarker.setVisible(true);
+                    }
                 }
             }
         }
