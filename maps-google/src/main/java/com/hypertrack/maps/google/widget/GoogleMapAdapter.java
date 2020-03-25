@@ -405,6 +405,7 @@ public class GoogleMapAdapter extends MapAdapter {
                         .rotation(location.getBearing())
                         .zIndex(Float.MAX_VALUE)
                 );
+                bearingMarker.setVisible(location.getBearing() != 0f);
             }
             isAdded = true;
         }
@@ -431,12 +432,8 @@ public class GoogleMapAdapter extends MapAdapter {
                 }
                 if (bearingMarker != null) {
                     bearingMarker.setPosition(center);
-                    if (location.getBearing() == 0f) {
-                        bearingMarker.setVisible(false);
-                    } else {
-                        bearingMarker.setRotation(location.getBearing());
-                        bearingMarker.setVisible(true);
-                    }
+                    bearingMarker.setRotation(location.getBearing());
+                    bearingMarker.setVisible(location.getBearing() != 0f);
                 }
             }
         }
