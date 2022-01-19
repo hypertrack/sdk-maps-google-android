@@ -1,4 +1,6 @@
-# HyperTrack Android Maps utility library for google maps
+# HyperTrack Android Maps utility library for google maps (DEPRECATED)
+
+> This library is DEPRECATED and not supported by Hypertrack team. Please do not depend on it and use your own solutions 
 
 ![Android HyperTrackViews SDK](https://img.shields.io/badge/Android%20Views%20SDK-0.6.0-brightgreen.svg)
 
